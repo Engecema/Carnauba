@@ -1,6 +1,6 @@
 services:
-  coolify:
-    image: coolify:dev
+  carnauba:
+    image: carnauba:dev
     pull_policy: never
     build:
       context: .
@@ -20,9 +20,9 @@ services:
       PUSHER_PORT: "${PUSHER_PORT:-6001}"
       PUSHER_BACKEND_PORT: "${PUSHER_BACKEND_PORT:-6001}"
       PUSHER_SCHEME: "${PUSHER_SCHEME:-http}"
-      PUSHER_APP_ID: "${PUSHER_APP_ID:-coolify}"
-      PUSHER_APP_KEY: "${PUSHER_APP_KEY:-coolify}"
-      PUSHER_APP_SECRET: "${PUSHER_APP_SECRET:-coolify}"
+      PUSHER_APP_ID: "${PUSHER_APP_ID:-carnauba}"
+      PUSHER_APP_KEY: "${PUSHER_APP_KEY:-carnauba}"
+      PUSHER_APP_SECRET: "${PUSHER_APP_SECRET:-carnauba}"
     healthcheck:
       test: curl -sf http://127.0.0.1:8080/api/health || exit 1
       interval: 5s
@@ -31,10 +31,10 @@ services:
     volumes:
       - .:/var/www/html/:cached
       - dev_backups_data:/var/www/html/storage/app/backups
-      - ./docker/coolify-terminal/terminal-server.js:/terminal/terminal-server.js
-      - ./docker/coolify-terminal/terminal-utils.js:/terminal/terminal-utils.js
+      - ./docker/carnauba-terminal/terminal-server.js:/terminal/terminal-server.js
+      - ./docker/carnauba-terminal/terminal-utils.js:/terminal/terminal-utils.js
     networks:
-      - coolify
+      - carnauba
   postgres:
     pull_policy: always
     ports:
@@ -42,9 +42,9 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_USER: "${DB_USERNAME:-coolify}"
+      POSTGRES_USER: "${DB_USERNAME:-carnauba}"
       POSTGRES_PASSWORD: "${DB_PASSWORD:-password}"
-      POSTGRES_DB: "${DB_DATABASE:-coolify}"
+      POSTGRES_DB: "${DB_DATABASE:-carnauba}"
       POSTGRES_HOST_AUTH_METHOD: "trust"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
@@ -69,7 +69,7 @@ services:
   vite:
     image: node:24-alpine
     pull_policy: always
-    container_name: coolify-vite
+    container_name: carnauba-vite
     working_dir: /var/www/html
     environment:
       # Set VITE_HOST in .env to a browser-reachable IP/hostname for LAN/Tailscale access
@@ -81,37 +81,37 @@ services:
       - .:/var/www/html/:cached
     command: sh -c "npm install && npm run dev"
     networks:
-      - coolify
+      - carnauba
   testing-host:
-    image: coolify-testing-host:dev
+    image: carnauba-testing-host:dev
     pull_policy: never
     build:
       context: .
       dockerfile: ./docker/testing-host/Dockerfile
     init: true
-    container_name: coolify-testing-host
+    container_name: carnauba-testing-host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - dev_coolify_data:/data/coolify
-      - dev_backups_data:/data/coolify/backups
-      - dev_postgres_data:/data/coolify/_volumes/database
-      - dev_redis_data:/data/coolify/_volumes/redis
-      - dev_minio_data:/data/coolify/_volumes/minio
+      - dev_carnauba_data:/data/carnauba
+      - dev_backups_data:/data/carnauba/backups
+      - dev_postgres_data:/data/carnauba/_volumes/database
+      - dev_redis_data:/data/carnauba/_volumes/redis
+      - dev_minio_data:/data/carnauba/_volumes/minio
     networks:
-      - coolify
+      - carnauba
   mailpit:
     image: axllent/mailpit:latest
     pull_policy: always
-    container_name: coolify-mail
+    container_name: carnauba-mail
     ports:
       - "${FORWARD_MAILPIT_PORT:-1025}:1025"
       - "${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
     networks:
-      - coolify
+      - carnauba
   # maxio:
   #   image: ghcr.io/coollabsio/maxio 
   #   pull_policy: always
-  #   container_name: coolify-maxio
+  #   container_name: carnauba-maxio
   #   ports:
   #     - "${FORWARD_MAXIO_PORT:-9000}:9000"
   #   environment:
@@ -120,11 +120,11 @@ services:
   #   volumes:
   #     - dev_maxio_data:/data
   #   networks:
-  #     - coolify
+  #     - carnauba
   minio:
     image: ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z # Released on 15 October 2025
     pull_policy: always
-    container_name: coolify-minio
+    container_name: carnauba-minio
     command: server /data --console-address ":9001"
     ports:
       - "${FORWARD_MINIO_PORT:-9000}:9000"
@@ -136,18 +136,18 @@ services:
       - dev_minio_data:/data
       - dev_maxio_data:/data
     networks:
-      - coolify
+      - carnauba
   # maxio-init:
   #   image: ghcr.io/coollabsio/mx:0.1.0
   #   pull_policy: always
-  #   container_name: coolify-maxio-init
+  #   container_name: carnauba-maxio-init
   #   restart: no
   #   depends_on:
   #     - maxio
   #   entrypoint: >
   #     /bin/sh -c "
   #     echo 'Waiting for MaxIO to be ready...';
-  #     until mc alias set local http://coolify-maxio:9000 maxioadmin maxioadmin 2>/dev/null; do
+  #     until mc alias set local http://carnauba-maxio:9000 maxioadmin maxioadmin 2>/dev/null; do
   #       echo 'MaxIO not ready yet, waiting...';
   #       sleep 2;
   #     done;
@@ -156,18 +156,18 @@ services:
   #     echo 'MaxIO initialization complete - bucket local is ready';
   #     "
   #   networks:
-  #     - coolify
+  #     - carnauba
   minio-init:
     image: ghcr.io/coollabsio/mx:0.1.0
     pull_policy: always
-    container_name: coolify-minio-init
+    container_name: carnauba-minio-init
     restart: no
     depends_on:
       - minio
     entrypoint: >
       /bin/sh -c "
       echo 'Waiting for MinIO to be ready...';
-      until mc alias set local http://coolify-minio:9000 minioadmin minioadmin 2>/dev/null; do
+      until mc alias set local http://carnauba-minio:9000 minioadmin minioadmin 2>/dev/null; do
         echo 'MinIO not ready yet, waiting...';
         sleep 2;
       done;
@@ -176,17 +176,17 @@ services:
       echo 'MinIO initialization complete - bucket local is ready';
       "
     networks:
-      - coolify
+      - carnauba
 
 volumes:
   dev_backups_data:
   dev_postgres_data:
   dev_redis_data:
-  dev_coolify_data:
+  dev_carnauba_data:
   dev_minio_data:
   dev_maxio_data:
 
 networks:
-  coolify:
-    name: coolify
+  carnauba:
+    name: carnauba
     external: false

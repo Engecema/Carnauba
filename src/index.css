@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ui-font-sans: 'Geist', system-ui, sans-serif;
+    --ui-font-mono: 'Geist Mono', monospace;
+
+    --ui-canvas: #0a0a0a;
+    --ui-sidebar: #120e1a;
+    --ui-card-bg: #121212;
+    --ui-well-bg: #18181b;
+    --ui-accent: #6b16ed;
+    --ui-accent-hover: #7317ff;
+    --ui-accent-depth: #4a0fa3;
+  }
+
+  body {
+    font-family: var(--ui-font-sans);
+    background-color: #0a0a0a;
+    color: #ededed;
+  }
+}

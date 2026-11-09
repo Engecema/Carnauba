@@ -1,6 +1,6 @@
 services:
-    coolify:
-        container_name: coolify
+    carnauba:
+        container_name: carnauba
         restart: always
         working_dir: /var/www/html
         extra_hosts:
@@ -9,24 +9,24 @@ services:
             - "6001"
             - "6002"
         networks:
-            - coolify
+            - carnauba
         depends_on:
             - postgres
             - redis
     postgres:
         image: postgres:15-alpine
-        container_name: coolify-db
+        container_name: carnauba-db
         restart: always
         networks:
-            - coolify
+            - carnauba
     redis:
         image: redis:7-alpine
-        container_name: coolify-redis
+        container_name: carnauba-redis
         restart: always
         networks:
-            - coolify
+            - carnauba
 networks:
-    coolify:
-        name: coolify
+    carnauba:
+        name: carnauba
         driver: bridge
         external: false

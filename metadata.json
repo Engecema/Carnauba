@@ -1,0 +1,8 @@
+{
+  "name": "Carnauba Cloud & PaaS Engine",
+  "description": "Self-hosted PaaS platform for deploying applications, databases, and managed services on your own infrastructure with real-time deployment pipelines, server metrics, and interactive API control.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

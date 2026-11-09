@@ -9,10 +9,10 @@
 # Optional profiles: vite, mailpit, minio, testing-host (scripts/dev enables them).
 
 services:
-  coolify:
-    image: coolify:dev
+  carnauba:
+    image: carnauba:dev
     pull_policy: never
-    container_name: "${COMPOSE_PROJECT_NAME:-coolify-dev}"
+    container_name: "${COMPOSE_PROJECT_NAME:-carnauba-dev}"
     build:
       context: .
       dockerfile: ./docker/development/Dockerfile
@@ -27,7 +27,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       AUTORUN_ENABLED: "${AUTORUN_ENABLED:-false}"
-      APP_NAME: "${APP_NAME:-Coolify}"
+      APP_NAME: "${APP_NAME:-Carnauba}"
       APP_URL: "${APP_URL:-http://localhost:8000}"
       APP_KEY: "${APP_KEY:-}"
       APP_ENV: "${APP_ENV:-local}"
@@ -35,22 +35,22 @@ services:
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: "${DB_DATABASE:-coolify}"
-      DB_USERNAME: "${DB_USERNAME:-coolify}"
+      DB_DATABASE: "${DB_DATABASE:-carnauba}"
+      DB_USERNAME: "${DB_USERNAME:-carnauba}"
       DB_PASSWORD: "${DB_PASSWORD:-password}"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: "${REDIS_PASSWORD:-null}"
-      COOLIFY_CONTAINER_ROLE: "${COOLIFY_CONTAINER_ROLE:-all}"
+      CARNAUBA_CONTAINER_ROLE: "${CARNAUBA_CONTAINER_ROLE:-all}"
       PUSHER_HOST: "${PUSHER_HOST:-}"
       # Browser-facing ports must match the host-published ports of this instance.
       PUSHER_PORT: "${FORWARD_PUSHER_PORT:-6001}"
       TERMINAL_PORT: "${FORWARD_TERMINAL_PORT:-6002}"
       PUSHER_BACKEND_PORT: 6001
       PUSHER_SCHEME: "${PUSHER_SCHEME:-http}"
-      PUSHER_APP_ID: "${PUSHER_APP_ID:-coolify}"
-      PUSHER_APP_KEY: "${PUSHER_APP_KEY:-coolify}"
-      PUSHER_APP_SECRET: "${PUSHER_APP_SECRET:-coolify}"
+      PUSHER_APP_ID: "${PUSHER_APP_ID:-carnauba}"
+      PUSHER_APP_KEY: "${PUSHER_APP_KEY:-carnauba}"
+      PUSHER_APP_SECRET: "${PUSHER_APP_SECRET:-carnauba}"
       BROADCAST_CONNECTION: reverb
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
@@ -58,12 +58,12 @@ services:
       # Same values as the host-side `php artisan dev:qemu` call (config/development-qemu.php).
       DEVELOPMENT_QEMU_INSTANCE: "${DEVELOPMENT_QEMU_INSTANCE:-}"
       DEVELOPMENT_QEMU_SLOT: "${DEVELOPMENT_QEMU_SLOT:-}"
-      DEVELOPMENT_QEMU_DOCKER_NETWORK: "${COMPOSE_PROJECT_NAME:-coolify-dev}"
-      DEVELOPMENT_QEMU_COOLIFY_CONTAINER: "${COMPOSE_PROJECT_NAME:-coolify-dev}"
-      # Host paths of the volumes that testing-host mounts at /data/coolify and /data/coolify/backups.
-      # Coolify uses them only for the testing-host server (it shares the host Docker daemon), not for KVM servers.
-      DEV_COOLIFY_DATA_VOLUME: "${COMPOSE_PROJECT_NAME:-coolify-dev}_coolify_data"
-      DEV_COOLIFY_BACKUPS_VOLUME: "${COMPOSE_PROJECT_NAME:-coolify-dev}_backups_data"
+      DEVELOPMENT_QEMU_DOCKER_NETWORK: "${COMPOSE_PROJECT_NAME:-carnauba-dev}"
+      DEVELOPMENT_QEMU_CARNAUBA_CONTAINER: "${COMPOSE_PROJECT_NAME:-carnauba-dev}"
+      # Host paths of the volumes that testing-host mounts at /data/carnauba and /data/carnauba/backups.
+      # Carnauba uses them only for the testing-host server (it shares the host Docker daemon), not for KVM servers.
+      DEV_CARNAUBA_DATA_VOLUME: "${COMPOSE_PROJECT_NAME:-carnauba-dev}_carnauba_data"
+      DEV_CARNAUBA_BACKUPS_VOLUME: "${COMPOSE_PROJECT_NAME:-carnauba-dev}_backups_data"
     healthcheck:
       test: curl -sf http://127.0.0.1:8080/api/health || exit 1
       interval: 5s
@@ -72,15 +72,15 @@ services:
     volumes:
       - .:/var/www/html/:cached
       - backups_data:/var/www/html/storage/app/backups
-      - ./docker/coolify-terminal/terminal-server.js:/terminal/terminal-server.js
-      - ./docker/coolify-terminal/terminal-utils.js:/terminal/terminal-utils.js
+      - ./docker/carnauba-terminal/terminal-server.js:/terminal/terminal-server.js
+      - ./docker/carnauba-terminal/terminal-utils.js:/terminal/terminal-utils.js
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - coolify
+      - carnauba
 
   postgres:
     image: postgres:15-alpine
@@ -88,9 +88,9 @@ services:
     ports:
       - "${DEV_BIND_ADDRESS:-0.0.0.0}:${FORWARD_DB_PORT:-5432}:5432"
     environment:
-      POSTGRES_USER: "${DB_USERNAME:-coolify}"
+      POSTGRES_USER: "${DB_USERNAME:-carnauba}"
       POSTGRES_PASSWORD: "${DB_PASSWORD:-password}"
-      POSTGRES_DB: "${DB_DATABASE:-coolify}"
+      POSTGRES_DB: "${DB_DATABASE:-carnauba}"
       POSTGRES_HOST_AUTH_METHOD: "trust"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
@@ -100,7 +100,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - coolify
+      - carnauba
 
   redis:
     image: redis:7-alpine
@@ -115,7 +115,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - coolify
+      - carnauba
 
   vite:
     profiles: ["vite"]
@@ -133,20 +133,20 @@ services:
       - .:/var/www/html/:cached
     command: sh -c "npm install && npm run dev"
     networks:
-      - coolify
+      - carnauba
 
-  coolify-helper:
-    image: coollabsio/coolify-helper:dev
+  carnauba-helper:
+    image: coollabsio/carnauba-helper:dev
     pull_policy: build
     build:
-      context: https://github.com/coollabsio/coolify-helper.git#main:src
+      context: https://github.com/coollabsio/carnauba-helper.git#main:src
       args:
         - IMAGE_VERSION=dev
     command: ["true"]
 
   testing-host:
     profiles: ["testing-host"]
-    image: coolify-testing-host:dev
+    image: carnauba-testing-host:dev
     pull_policy: never
     build:
       context: .
@@ -154,20 +154,20 @@ services:
     init: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - coolify_data:/data/coolify
+      - carnauba_data:/data/carnauba
       # Same path as on the Docker host, so bind mounts created through the host daemon resolve.
-      - coolify_data:/var/lib/docker/volumes/${COMPOSE_PROJECT_NAME:-coolify-dev}_coolify_data/_data
-      - backups_data:/data/coolify/backups
-      - postgres_data:/data/coolify/_volumes/database
-      - redis_data:/data/coolify/_volumes/redis
-      - minio_data:/data/coolify/_volumes/minio
+      - carnauba_data:/var/lib/docker/volumes/${COMPOSE_PROJECT_NAME:-carnauba-dev}_carnauba_data/_data
+      - backups_data:/data/carnauba/backups
+      - postgres_data:/data/carnauba/_volumes/database
+      - redis_data:/data/carnauba/_volumes/redis
+      - minio_data:/data/carnauba/_volumes/minio
       # Image scanner files: the scanner containers bind-mount these paths through the host daemon.
-      - /data/coolify/image-scans:/data/coolify/image-scans
+      - /data/carnauba/image-scans:/data/carnauba/image-scans
     networks:
-      coolify:
+      carnauba:
         # Seeders use this hostname for the localhost server.
         aliases:
-          - coolify-testing-host
+          - carnauba-testing-host
 
   mailpit:
     profiles: ["mailpit"]
@@ -177,10 +177,10 @@ services:
       - "${DEV_BIND_ADDRESS:-0.0.0.0}:${FORWARD_MAILPIT_PORT:-1025}:1025"
       - "${DEV_BIND_ADDRESS:-0.0.0.0}:${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
     networks:
-      coolify:
-        # The seeded instance SMTP settings (InstanceSettingsSeeder) use coolify-mail:1025.
+      carnauba:
+        # The seeded instance SMTP settings (InstanceSettingsSeeder) use carnauba-mail:1025.
         aliases:
-          - coolify-mail
+          - carnauba-mail
 
   minio:
     profiles: ["minio"]
@@ -195,10 +195,10 @@ services:
     volumes:
       - minio_data:/data
     networks:
-      coolify:
-        # The seeded "Local MinIO" storage (S3StorageSeeder) uses http://coolify-minio:9000.
+      carnauba:
+        # The seeded "Local MinIO" storage (S3StorageSeeder) uses http://carnauba-minio:9000.
         aliases:
-          - coolify-minio
+          - carnauba-minio
 
   minio-init:
     profiles: ["minio"]
@@ -213,16 +213,16 @@ services:
       mc mb local/local --ignore-existing;
       "
     networks:
-      - coolify
+      - carnauba
 
 volumes:
   backups_data:
   postgres_data:
   redis_data:
-  coolify_data:
+  carnauba_data:
   minio_data:
 
 networks:
-  coolify:
-    name: "${COMPOSE_PROJECT_NAME:-coolify-dev}"
+  carnauba:
+    name: "${COMPOSE_PROJECT_NAME:-carnauba-dev}"
     driver: bridge

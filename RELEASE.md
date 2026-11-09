@@ -163,7 +163,7 @@ Print what the next run publishes with `scripts/plan-version.sh --nightly`.
 
 ## Main builds
 
-The main workflow builds `main` twice a day when it changed since the last build and moves `ghcr.io/coollabsio/coolify:main` to it, to test fixes before their patch release. A main build is versioned `<stable version>.<YYYYMMDD>.<N>`, `4.5.0.20261028.1`, which sorts after `4.5.0` and before `4.5.1`.
+The main workflow builds `main` twice a day when it changed since the last build and moves `ghcr.io/coollabsio/carnauba:main` to it, to test fixes before their patch release. A main build is versioned `<stable version>.<YYYYMMDD>.<N>`, `4.5.0.20261028.1`, which sorts after `4.5.0` and before `4.5.1`.
 
 - ghcr.io only, no version tag, no git tag, no GitHub release and no channel of the CDN, an instance installs it through the custom channel with the tag `main`
 
@@ -171,7 +171,7 @@ Print what the next run builds with `scripts/plan-version.sh --main`.
 
 ## Pull requests
 
-The pull request workflow builds every pull request and publishes the image of a pull request from a branch of this repository as `ghcr.io/coollabsio/coolify:pr-<number>`. Its version is `<base>-pr.<number>`, with the base a nightly of its base branch takes, or the stable version for `main`:
+The pull request workflow builds every pull request and publishes the image of a pull request from a branch of this repository as `ghcr.io/coollabsio/carnauba:pr-<number>`. Its version is `<base>-pr.<number>`, with the base a nightly of its base branch takes, or the stable version for `main`:
 
 - Into `next`: `4.6.0-beta.1-pr.1234` after `4.6.0-beta.1`, or `4.7.0-alpha.0-pr.1234` before the first alpha of 4.7.0
 - Into `main`: `4.5.3-pr.1234`
@@ -183,19 +183,19 @@ The pull request workflow builds every pull request and publishes the image of a
 
 ## CDN
 
-`scripts/sync-cdn.sh` syncs a channel of `coollabsio/coollabs-cdn` from the commit of the version it syncs: the install and upgrade scripts, the compose files, the environment file, the service templates, the GitHub releases and the block of the channel in `/coolify/versions.json`.
+`scripts/sync-cdn.sh` syncs a channel of `coollabsio/coollabs-cdn` from the commit of the version it syncs: the install and upgrade scripts, the compose files, the environment file, the service templates, the GitHub releases and the block of the channel in `/carnauba/versions.json`.
 
 | Channel   | Path                | Synced by                                                 |
 | --------- | ------------------- | --------------------------------------------------------- |
-| `stable`  | `/coolify/`         | the release workflow when `latest` moves, a pull request  |
-| `preview` | `/coolify/preview/` | the release workflow when `preview` moves, pushed to main |
-| `nightly` | `/coolify/nightly/` | the nightly workflow after every nightly, pushed to main  |
+| `stable`  | `/carnauba/`         | the release workflow when `latest` moves, a pull request  |
+| `preview` | `/carnauba/preview/` | the release workflow when `preview` moves, pushed to main |
+| `nightly` | `/carnauba/nightly/` | the nightly workflow after every nightly, pushed to main  |
 
 - The preview channel takes betas and release candidates, alphas reach the nightly channel only
 - The stable channel opens a pull request from `sync/stable-v<version>`, squash merge it. A new sync of the same version updates it, a sync of a newer version closes it
 - `CDN_TOKEN` in the environment `release` is a fine-grained token for `coollabsio/coollabs-cdn` alone, with read and write access to contents and pull requests
-- `/coolify/versions.json` has a `stable`, `preview` and `nightly` block, each with the Coolify version of its channel and the helper, Sentinel and Traefik versions of the `upstream.json` it was synced from. An instance takes the newest version of its channel and the more stable ones
-- Every stable sync also sets the `coolify` and `traefik` keys, which older instances read, to the stable versions, so older instances upgrade to a version that reads the blocks
+- `/carnauba/versions.json` has a `stable`, `preview` and `nightly` block, each with the Carnauba version of its channel and the helper, Sentinel and Traefik versions of the `upstream.json` it was synced from. An instance takes the newest version of its channel and the more stable ones
+- Every stable sync also sets the `carnauba` and `traefik` keys, which older instances read, to the stable versions, so older instances upgrade to a version that reads the blocks
 
 Cloudflare keeps a file of the CDN for up to 10 minutes. To clear the cache sooner, for example once the pull request of the stable channel is merged and deployed, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID` in `.env` or the environment, with a token that can purge the cache of the zone:
 
@@ -205,7 +205,7 @@ scripts/sync-cdn.sh --purge
 
 ## Update the helper, Sentinel or Traefik
 
-`upstream.json` pins them. A change of it releases nothing, every Coolify instance reads the versions from the CDN. To ship it before the next release, sync the stable channel on `main`:
+`upstream.json` pins them. A change of it releases nothing, every Carnauba instance reads the versions from the CDN. To ship it before the next release, sync the stable channel on `main`:
 
 ```sh
 scripts/sync-cdn.sh --stable <latest version>

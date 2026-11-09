@@ -1,5 +1,5 @@
-# Contributing to Coolify
-We’re happy that you’re interested in contributing to Coolify!
+# Contributing to Carnauba
+We’re happy that you’re interested in contributing to Carnauba!
 
 There are many ways to help:
 - Answer questions in GitHub Discussions or Discord
@@ -8,7 +8,7 @@ There are many ways to help:
 - Add new one-click services
 - Improve documentation
 
-Coolify is a PaaS used by 400,000+ people worldwide and maintained by two active maintainers. Contributions are welcome — but **alignment matters more than quantity**.
+Carnauba is a PaaS used by 400,000+ people worldwide and maintained by two active maintainers. Contributions are welcome — but **alignment matters more than quantity**.
 
 This guide explains **what kind of contributions are likely to be accepted** and how to submit them properly. Following it saves time for both you and the maintainers.
 
@@ -18,7 +18,7 @@ This guide explains **what kind of contributions are likely to be accepted** and
 
 
 ## High-Level Expectations
-- Coolify has a clear product direction.
+- Carnauba has a clear product direction.
 - Ownership and decisions are centralized.
 - Review capacity is limited.
 - Not every contribution will be accepted — even if technically correct.
@@ -27,7 +27,7 @@ This is normal for a two-maintainer project.
 
 
 ## State of the Project
-Coolify is currently at v4. While v4 is stable, it has some limitations, including:
+Carnauba is currently at v4. While v4 is stable, it has some limitations, including:
 - Limited scaling support
 - A more complex user experience
 - Other smaller issues that need refinement
@@ -69,7 +69,7 @@ This includes:
 - Architectural changes
 - Changes touching many files
 
-Discussion happens in GitHub Discussions: https://github.com/coollabsio/coolify/discussions/categories/general
+Discussion happens in GitHub Discussions: https://github.com/coollabsio/carnauba/discussions/categories/general
 
 Pull requests introducing major changes without prior discussion will be closed without review.
 
@@ -78,7 +78,7 @@ This ensures alignment before significant work is done.
 
 ## What This Project Is Not
 To set clear expectations:
-- Coolify is not optimized for first-time open-source contributors
+- Carnauba is not optimized for first-time open-source contributors
 - We do not provide beginner-focused mentorship issues
 - Large unsolicited changes are unlikely to be accepted
 - Broad refactors or style rewrites are not helpful
@@ -226,13 +226,13 @@ A: Yes, but keep in mind a PR closure is feedback, not a rejection of your effor
 
 # Development Guides
 ## Local Development
-To build and run Coolify locally, see: [Development](./DEVELOPMENT.md)
+To build and run Carnauba locally, see: [Development](./DEVELOPMENT.md)
 
-### Testing the Coolify Helper Locally
+### Testing the Carnauba Helper Locally
 
-The helper image lives in [coollabsio/coolify-helper](https://github.com/coollabsio/coolify-helper). The development setup builds its `main` branch as `coollabsio/coolify-helper:dev`, set the helper version override to `dev` to use it. `scripts/dev-helper` builds it from there too, or from a local checkout with `HELPER_CONTEXT=../coolify-helper/src`.
+The helper image lives in [coollabsio/carnauba-helper](https://github.com/coollabsio/carnauba-helper). The development setup builds its `main` branch as `coollabsio/carnauba-helper:dev`, set the helper version override to `dev` to use it. `scripts/dev-helper` builds it from there too, or from a local checkout with `HELPER_CONTEXT=../carnauba-helper/src`.
 
-Use `scripts/dev-helper` to build a local helper image and test it with the running development instance. The script requires the standard local Coolify container and the seeded Dockerfile, Docker Compose, and Nixpacks applications.
+Use `scripts/dev-helper` to build a local helper image and test it with the running development instance. The script requires the standard local Carnauba container and the seeded Dockerfile, Docker Compose, and Nixpacks applications.
 
 Run the complete workflow:
 
@@ -257,15 +257,15 @@ Clear the helper override when finished:
 ./scripts/dev-helper reset
 ```
 
-The default image repository is `docker.io/coollabsio/coolify-helper`. Set `HELPER_IMAGE_REPOSITORY` to test another repository, or `COOLIFY_CONTAINER` if the local Coolify container has a different name.
+The default image repository is `docker.io/coollabsio/carnauba-helper`. Set `HELPER_IMAGE_REPOSITORY` to test another repository, or `CARNAUBA_CONTAINER` if the local Carnauba container has a different name.
 
 ### macOS Development with Lima
-Mac users can use [Lima](https://lima-vm.io/) to run a lightweight Linux virtual machine for local Coolify development. This is useful if you prefer a Linux-based Docker environment on macOS.
+Mac users can use [Lima](https://lima-vm.io/) to run a lightweight Linux virtual machine for local Carnauba development. This is useful if you prefer a Linux-based Docker environment on macOS.
 
 After creating and starting a Lima VM, run the normal local development commands from inside the VM as described in [Development](./DEVELOPMENT.md).
 
 ## Adding a New Service
-To add a new one-click service, follow: https://coolify.io/docs/get-started/contribute/service
+To add a new one-click service, follow: https://carnauba.io/docs/get-started/contribute/service
 
 ## Contributing to Documentation
-To contribute to documentation, see: https://coolify.io/docs/get-started/contribute/documentation
+To contribute to documentation, see: https://carnauba.io/docs/get-started/contribute/documentation

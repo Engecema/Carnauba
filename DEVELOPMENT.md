@@ -1,4 +1,4 @@
-# Contributing to Coolify
+# Contributing to Carnauba
 > "First, thanks for considering contributing to my project. It really means a lot!" - [@andrasbacsai](https://github.com/andrasbacsai)
 
 You can ask for guidance anytime on our [Discord server](https://coollabs.io/discord) in the `#contribute` channel.
@@ -11,7 +11,7 @@ To understand the tech stack, please refer to the [Tech Stack](TECH_STACK.md) do
 2. [Verify Installation](#2-verify-installation-optional)
 3. [Fork and Setup Local Repository](#3-fork-and-setup-local-repository)
 4. [Set up Environment Variables](#4-set-up-environment-variables)
-5. [Start Coolify](#5-start-coolify)
+5. [Start Carnauba](#5-start-carnauba)
 6. [Start Development](#6-start-development)
 7. [Create a Pull Request](#7-create-a-pull-request)
 8. [Development Notes](#development-notes)
@@ -27,11 +27,11 @@ Follow the steps below for your operating system:
 
 1. Install `docker-ce`, Docker Desktop (or similar):
    - Docker CE (recommended):
-     - Install Windows Subsystem for Linux v2 (WSL2) by following this guide: [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install?ref=coolify)
-     - After installing WSL2, install Docker CE for your Linux distribution by following this guide: [Install Docker Engine](https://docs.docker.com/engine/install/?ref=coolify)
+     - Install Windows Subsystem for Linux v2 (WSL2) by following this guide: [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install?ref=carnauba)
+     - After installing WSL2, install Docker CE for your Linux distribution by following this guide: [Install Docker Engine](https://docs.docker.com/engine/install/?ref=carnauba)
      - Make sure to choose the appropriate Linux distribution (e.g., Ubuntu) when following the Docker installation guide
    - Install Docker Desktop (easier):
-     - Download and install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/?ref=coolify)
+     - Download and install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/?ref=carnauba)
      - Ensure WSL2 backend is enabled in Docker Desktop settings
 
 
@@ -42,9 +42,9 @@ Follow the steps below for your operating system:
 
 1. Install Orbstack, Docker Desktop (or similar):
    - Orbstack (recommended, as it is a faster and lighter alternative to Docker Desktop):
-     - Download and install [Orbstack](https://docs.orbstack.dev/quick-start#installation?ref=coolify)
+     - Download and install [Orbstack](https://docs.orbstack.dev/quick-start#installation?ref=carnauba)
    - Docker Desktop:
-     - Download and install [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/?ref=coolify)
+     - Download and install [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/?ref=carnauba)
 
 
 </details>
@@ -54,9 +54,9 @@ Follow the steps below for your operating system:
 
 1. Install Docker Engine, Docker Desktop (or similar):
    - Docker Engine (recommended, as there is no VM overhead):
-     - Follow the official [Docker Engine installation guide](https://docs.docker.com/engine/install/?ref=coolify) for your Linux distribution
+     - Follow the official [Docker Engine installation guide](https://docs.docker.com/engine/install/?ref=carnauba) for your Linux distribution
    - Docker Desktop:
-     - If you want a GUI, you can use [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/?ref=coolify)
+     - If you want a GUI, you can use [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/?ref=carnauba)
 
 
 </details>
@@ -75,36 +75,36 @@ After installing Docker (or Orbstack), verify the installation:
 
 
 ## 3. Fork and Setup Local Repository
-1. Fork the [Coolify](https://github.com/coollabsio/coolify) repository to your GitHub account.
+1. Fork the [Carnauba](https://github.com/coollabsio/carnauba) repository to your GitHub account.
 
 2. Install a code editor on your machine (choose one):
 
    | Editor | Platform | Download Link |
    |--------|----------|---------------|
-   | Visual Studio Code (recommended free) | Windows/macOS/Linux | [Download](https://code.visualstudio.com/download?ref=coolify) |
-   | Cursor (recommended but paid) | Windows/macOS/Linux | [Download](https://www.cursor.com/?ref=coolify) |
-   | Zed (very fast) | Windows/macOS/Linux | [Download](https://zed.dev/download?ref=coolify) |
+   | Visual Studio Code (recommended free) | Windows/macOS/Linux | [Download](https://code.visualstudio.com/download?ref=carnauba) |
+   | Cursor (recommended but paid) | Windows/macOS/Linux | [Download](https://www.cursor.com/?ref=carnauba) |
+   | Zed (very fast) | Windows/macOS/Linux | [Download](https://zed.dev/download?ref=carnauba) |
 
-3. Clone the Coolify Repository from your fork to your local machine
+3. Clone the Carnauba Repository from your fork to your local machine
    - Use `git clone` in the command line, or
    - Use GitHub Desktop (recommended):
-     - Download and install from [https://desktop.github.com/](https://desktop.github.com/?ref=coolify)
+     - Download and install from [https://desktop.github.com/](https://desktop.github.com/?ref=carnauba)
      - Open GitHub Desktop and login with your GitHub account
-     - Click on `File` -> `Clone Repository` select `github.com` as the repository location, then select your forked Coolify repository, choose the local path and then click `Clone`
+     - Click on `File` -> `Clone Repository` select `github.com` as the repository location, then select your forked Carnauba repository, choose the local path and then click `Clone`
 
-4. Open the cloned Coolify Repository in your chosen code editor.
+4. Open the cloned Carnauba Repository in your chosen code editor.
 
 
 ## 4. Set up Environment Variables
-1. In the Code Editor, locate the `.env.development.example` file in the root directory of your local Coolify repository.
+1. In the Code Editor, locate the `.env.development.example` file in the root directory of your local Carnauba repository.
 2. Duplicate the `.env.development.example` file and rename the copy to `.env`.
 3. Open the new `.env` file and review its contents. Adjust any environment variables as needed for your development setup.
 4. If you encounter errors during database migrations, update the database connection settings in your `.env` file. Use the IP address or hostname of your PostgreSQL database container. You can find this information by running `docker ps` after executing `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`.
 5. Save the changes to your `.env` file.
 
 
-## 5. Start Coolify
-1. Open a terminal in the local Coolify directory.
+## 5. Start Carnauba
+1. Open a terminal in the local Carnauba directory.
 2. Run the following command in the terminal (leave that terminal open):
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.dev.yml up
@@ -123,7 +123,7 @@ After installing Docker (or Orbstack), verify the installation:
 
 
 ## 6. Start Development
-1. Access your Coolify instance:
+1. Access your Carnauba instance:
    - URL: `http://localhost:8000`
    - Login: `test@example.com`
    - Password: `password`
@@ -150,16 +150,16 @@ After installing Docker (or Orbstack), verify the installation:
 
 
 ## Development Notes
-When working on Coolify, keep the following in mind:
+When working on Carnauba, keep the following in mind:
 
 1. **Database Migrations**: After switching branches or making changes to the database structure, always run migrations:
    ```bash
-   docker exec -it coolify php artisan migrate
+   docker exec -it carnauba php artisan migrate
    ```
 
 2. **Resetting Development Setup**: To reset your development setup to a clean database with default values:
    ```bash
-   docker exec -it coolify php artisan migrate:fresh --seed
+   docker exec -it carnauba php artisan migrate:fresh --seed
    ```
 
 3. **Troubleshooting**: If you encounter unexpected behavior, ensure your database is up-to-date with the latest migrations and if possible reset the development setup to eliminate any environment-specific issues.
@@ -173,14 +173,14 @@ If you encounter issues or break your database or something else, follow these s
 
 1. Stop all running containers `ctrl + c`.
 
-2. Force-remove all Coolify dev containers:
+2. Force-remove all Carnauba dev containers:
    ```bash
    npm run clean
    ```
 
-3. Remove Coolify volumes (it is possible that the volumes have no `coolify` prefix on your machine, in that case remove the prefix from the command):
+3. Remove Carnauba volumes (it is possible that the volumes have no `carnauba` prefix on your machine, in that case remove the prefix from the command):
    ```bash
-   docker volume rm coolify_dev_backups_data coolify_dev_postgres_data coolify_dev_redis_data coolify_dev_coolify_data coolify_dev_minio_data
+   docker volume rm carnauba_dev_backups_data carnauba_dev_postgres_data carnauba_dev_redis_data carnauba_dev_carnauba_data carnauba_dev_minio_data
    ```
 
 4. Remove unused images:
@@ -188,14 +188,14 @@ If you encounter issues or break your database or something else, follow these s
    docker image prune -a
    ```
 
-5. Start Coolify again:
+5. Start Carnauba again:
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.dev.yml up
    ```
 
 6. Run database migrations and seeders:
    ```bash
-   docker exec -it coolify php artisan migrate:fresh --seed
+   docker exec -it carnauba php artisan migrate:fresh --seed
    ```
 
 After completing these steps, you'll have a fresh development setup.
@@ -206,7 +206,7 @@ After completing these steps, you'll have a fresh development setup.
 
 ## Additional Development Guidelines
 ### Adding a New Service
-To add a new service to Coolify, please refer to our documentation: [Adding a New Service](https://coolify.io/docs/get-started/contribute/service)
+To add a new service to Carnauba, please refer to our documentation: [Adding a New Service](https://carnauba.io/docs/get-started/contribute/service)
 
 ### Development for Documentation
-To contribute to the Coolify documentation, please refer to this guide: [Contributing to the Coolify Documentation](https://coolify.io/docs/get-started/contribute/documentation)
+To contribute to the Carnauba documentation, please refer to this guide: [Contributing to the Carnauba Documentation](https://carnauba.io/docs/get-started/contribute/documentation)

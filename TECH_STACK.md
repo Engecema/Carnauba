@@ -1,4 +1,4 @@
-# Coolify Technology Stack
+# Carnauba Technology Stack
 
 ## Frontend
 

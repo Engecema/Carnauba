@@ -24,12 +24,12 @@
 - Browser `click()`/`assertSee()` wait forever when nothing matches, so a bad selector hangs the run instead of failing it. `click('Text')` can match a hidden element first (use `button:visible:has-text("Text")`); `:text-is()` on an element with child elements and `assertSee()` text with double quotes never match. Prefer plain CSS selectors. `click()` also hung on a button far down the long `/analytics` page; click it with `$page->script("document.querySelector('...').click()")` there.
 - A new worktree has no `vendor/` or `public/build/`. Run `composer install --ignore-platform-req=ext-zip` on the host and copy `public/build` from the main checkout before page-rendering tests; otherwise they fail with a Vite manifest error.
 - A dev deployment that stays `in_progress` with no log lines and no `horizon_job_id` is waiting in a queue that Horizon does not serve. With `SELF_HOSTED=false` in `.env`, deployments go to the cloud `deployments` queue; run `./scripts/dev exec php artisan queue:work redis --queue=deployments --once` or fix the env.
-- Never run `php artisan test` inside a dev container (`./scripts/dev exec` or `docker exec coolify-dev-*`). The container sets `DB_CONNECTION=pgsql` as a real environment variable, which wins over `phpunit.xml`, so `RefreshDatabase` runs `migrate:fresh` on the dev database and wipes it. Run tests on the host only.
-- The helper image runs `docker compose` for deployments and for the Coolify upgrade itself. Before you bump its Docker CLI or Compose, test them against the oldest supported Docker Engine (for example a `docker:<version>-dind` container); newer clients can reject data from older daemons.
+- Never run `php artisan test` inside a dev container (`./scripts/dev exec` or `docker exec carnauba-dev-*`). The container sets `DB_CONNECTION=pgsql` as a real environment variable, which wins over `phpunit.xml`, so `RefreshDatabase` runs `migrate:fresh` on the dev database and wipes it. Run tests on the host only.
+- The helper image runs `docker compose` for deployments and for the Carnauba upgrade itself. Before you bump its Docker CLI or Compose, test them against the oldest supported Docker Engine (for example a `docker:<version>-dind` container); newer clients can reject data from older daemons.
 - Do not symlink `vendor` into another worktree. Composer resolves the base path from the real `vendor` path, so the tests load the app classes of the other checkout. Run `composer install --ignore-platform-req=ext-zip` in the worktree.
 - To assert that the unsaved-changes bar shows, check `el.classList.contains('is-dirty')`. Playwright treats the hidden bar (`opacity-0`) as visible, and its class attribute always contains the text `is-dirty` from Tailwind variants.
 - In browser tests, address `x-forms.input` fields by `name` (`type('fieldName', ...)`); its HTML `id` is not always the Livewire property, so `#property` waits forever.
-- For load tests against a dev VM, use your own instance (`COOLIFY_DEV_INSTANCE=<name> COOLIFY_DEV_SIDE_BY_SIDE=1 ./scripts/dev start`); other sessions can reseed the localhost VM of a shared instance. The 1 GiB VM drops packets when its conntrack table is full (`dmesg`: `nf_conntrack: table full`), so raise `net.netfilter.nf_conntrack_max` on it and run an idle load first to prove a clean baseline.
+- For load tests against a dev VM, use your own instance (`CARNAUBA_DEV_INSTANCE=<name> CARNAUBA_DEV_SIDE_BY_SIDE=1 ./scripts/dev start`); other sessions can reseed the localhost VM of a shared instance. The 1 GiB VM drops packets when its conntrack table is full (`dmesg`: `nf_conntrack: table full`), so raise `net.netfilter.nf_conntrack_max` on it and run an idle load first to prove a clean baseline.
 - Do not call `sleep()` in a browser test. The app server runs in the test process, so `sleep()` stops it; use `$page->wait()`.
 - `Queue::fake()` also captures `dispatchSync()` of a `ShouldQueue` job, so the job never runs. Fake only the jobs to block (`Queue::fake([SomeJob::class])`). Exception: actions (`AsAction`) are queued as `JobDecorator`, so `Queue::fake([SomeAction::class])` does not stop them; use `Queue::fake()` and `SomeAction::assertPushed()`.
 - `Notification::fake()` records nothing for a team that has no enabled channel. Turn one on (for example `emailNotificationSettings()->update(['use_instance_email_settings' => true, '<event>_email_notifications' => true])`) before `assertSentTo`.
@@ -98,7 +98,7 @@
 ## Trace infrastructure changes end to end
 - For container image changes, inspect Compose services and every relevant Dockerfile build stage.
 - Pin a stable release tag instead of using a floating `latest` tag.
-- Never give a test build an official image tag (for example `coollabsio/sentinel:<version>`) in the host Docker. Dev instances that use `testing-host` share the host Docker socket and run that tag without a pull. Load such a tag only inside a dev VM, and give the build the same version string, or Coolify's Sentinel check restarts it every minute.
+- Never give a test build an official image tag (for example `coollabsio/sentinel:<version>`) in the host Docker. Dev instances that use `testing-host` share the host Docker socket and run that tag without a pull. Load such a tag only inside a dev VM, and give the build the same version string, or Carnauba's Sentinel check restarts it every minute.
 - A successful image pull does not prove that the complete application build no longer uses the old image.
 - Do not use `docker compose up --wait` for a stack with one-shot services; wait for the required long-running service's health instead.
 
@@ -119,14 +119,14 @@
 - Mark Livewire properties that select records or feed server-side lookups as `#[Locked]`; clients can change every other public property.
 
 ## Keep host test runs away from the dev app cache
-- The repository is bind-mounted into the dev `coolify` container. Tests that call `app:init` run `optimize` and write a testing config/route cache into `bootstrap/cache`, so the dev app returns 500. For broad host test runs, set `APP_CONFIG_CACHE`, `APP_ROUTES_CACHE`, `APP_EVENTS_CACHE`, `APP_SERVICES_CACHE`, and `APP_PACKAGES_CACHE` to a temporary directory.
+- The repository is bind-mounted into the dev `carnauba` container. Tests that call `app:init` run `optimize` and write a testing config/route cache into `bootstrap/cache`, so the dev app returns 500. For broad host test runs, set `APP_CONFIG_CACHE`, `APP_ROUTES_CACHE`, `APP_EVENTS_CACHE`, `APP_SERVICES_CACHE`, and `APP_PACKAGES_CACHE` to a temporary directory.
 
 ## Test the real runtime image
 - Deployment shell commands run in the Alpine/BusyBox helper image and pass through the non-root sudo parser. Verify new flags and shell syntax in that image and with `parseCommandsByLineForSudo()`; faked command output hides both failures.
 - Put multi-step remote shell logic in one `sh -c '<script>' sh <args>` line. The non-root parser then only puts sudo in front of it; it rewrites `x=$(...)`, `&&`, `|` and shell keywords in any other line.
 - `Server` has an identity map. Tests that create servers in several dataset cases with `RefreshDatabase` must call `Server::flushIdentityMap()` in `beforeEach`/`afterEach`, or a case reads the cached server of the previous case.
 - Host test runs share `storage/` with the dev container. Fake the `ssh-keys`/`ssh-mux` disks and `Process` in tests that run seeders or write SSH files, or the test deletes/chowns the dev instance's SSH keys and SSH breaks for `www-data`.
-- Dev QEMU servers from `dev:qemu` are seeded, not validated: they have no `coolify` Docker network, and Alpine has no bash until `InstallPrerequisites` runs.
+- Dev QEMU servers from `dev:qemu` are seeded, not validated: they have no `carnauba` Docker network, and Alpine has no bash until `InstallPrerequisites` runs.
 
 ## Report failures of queued actions
 - A value that an action returns when it runs as a queued job (`::dispatch()`) goes nowhere. Do not report a failure only with a return string or `throwError: false`; log it and broadcast it to the page that started the action.
@@ -135,13 +135,13 @@
 - `pint --dirty` also rewrites uncommitted files that belong to other work in the tree. When the tree has unrelated changes, pass your changed paths to Pint.
 
 ## Match containers by UUID, never by numeric id
-- Container ownership labels are `coolify.applicationUuid`, `coolify.serviceUuid`, `coolify.service.subUuid`, and `coolify.databaseUuid`. Numeric ids change when a server moves to another instance.
+- Container ownership labels are `carnauba.applicationUuid`, `carnauba.serviceUuid`, `carnauba.service.subUuid`, and `carnauba.databaseUuid`. Numeric ids change when a server moves to another instance.
 - Use `resolveContainerOwner()`, `resolveServiceContainerOwner()`, and `containersOwnedBy()` / `dockerPsByOwnerCommands()` from `bootstrap/helpers/docker.php`. Order: UUID label, then `com.docker.compose.project` (the UUID only since July 2024), then the local numeric id label of older containers.
 - Read owners from the flat label list. `Arr::undot()` breaks `com.docker.compose.project` because `com.docker.compose.project.config_files` is nested under it.
 
 ## Non-root SSH users: keep file access behind sudo
-- `parseCommandsByLineForSudo()` does not prefix `cd` or `echo`, and the SSH user's shell opens redirects (`>`, `<`) and expands globs. On the Coolify host, `/data/coolify` is `9999:root 0700`, so these fail for a non-root user.
-- In remote commands, use absolute paths (`docker compose -f <dir>/docker-compose.yml`, `--project-directory <dir>`), `echo ... | tee <file> > /dev/null`, and `find` instead of globs. scp also runs as the SSH user; stage files outside `/data/coolify`.
+- `parseCommandsByLineForSudo()` does not prefix `cd` or `echo`, and the SSH user's shell opens redirects (`>`, `<`) and expands globs. On the Carnauba host, `/data/carnauba` is `9999:root 0700`, so these fail for a non-root user.
+- In remote commands, use absolute paths (`docker compose -f <dir>/docker-compose.yml`, `--project-directory <dir>`), `echo ... | tee <file> > /dev/null`, and `find` instead of globs. scp also runs as the SSH user; stage files outside `/data/carnauba`.
 - The parsers add sudo only to line starts (and after `&&`, `||`, `|`, `$(`). Put `if`/`else` branches on their own lines. When a redirect or `cd` must stay, make the whole line one `sh -c '...'` script; it runs as `sudo sh -c` without inner sudo or bash.
 - Tests that replace `DatabaseStartCommandExecutor` or use root servers miss non-root bugs. Test the parsed commands of a non-root server.
 

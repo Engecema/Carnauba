@@ -7,7 +7,7 @@
   "ports": [
     {
       "port": 8000,
-      "label": "Coolify UI"
+      "label": "Carnauba UI"
     }
   ]
 }

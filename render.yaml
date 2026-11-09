@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: carnauba
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: HOST
+        value: 0.0.0.0
+      - key: APP_NAME
+        value: Carnauba Cloud & PaaS Engine
+      - key: APP_ENV
+        value: production
+      - key: CARNAUBA_VERSION
+        value: v4.0.0-beta.392
+      - key: CARNAUBA_CONTAINER_ROLE
+        value: app
+      - key: CARNAUBA_URL
+        fromService:
+          type: web
+          name: carnauba
+          property: host
+      - key: CARNAUBA_SECRET_KEY
+        generateValue: true
+      - key: CARNAUBA_SELF_HOSTED
+        value: "true"
+      - key: CARNAUBA_API_ENABLED
+        value: "true"

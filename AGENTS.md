@@ -4,7 +4,7 @@ This file provides guidance to agentic coding tools when working with code in th
 
 ## Project Overview
 
-Coolify is an open-source, self-hostable PaaS (alternative to Heroku/Netlify/Vercel). It manages servers, applications, databases, and services via SSH. Built with Laravel 12 (using Laravel 10 file structure), Livewire 3, and Tailwind CSS v4.
+Carnauba is an open-source, self-hostable PaaS (alternative to Heroku/Netlify/Vercel). It manages servers, applications, databases, and services via SSH. Built with Laravel 12 (using Laravel 10 file structure), Livewire 3, and Tailwind CSS v4.
 
 ## Design Reference
 
@@ -12,7 +12,7 @@ For UI/UX design specifications, principles, and visual standards, consult the l
 
 ## Development Environment
 
-Docker Compose-based dev setup with services: coolify (app, which also runs Reverb WebSockets and the terminal server), postgres, redis, vite, testing-host, mailpit, minio.
+Docker Compose-based dev setup with services: carnauba (app, which also runs Reverb WebSockets and the terminal server), postgres, redis, vite, testing-host, mailpit, minio.
 
 ```bash
 # One dev instance per git branch (containers, volumes, VMs named after the branch)
@@ -20,7 +20,7 @@ Docker Compose-based dev setup with services: coolify (app, which also runs Reve
 ./scripts/dev stop                           # stop containers and VMs; data is kept for the next start
 ./scripts/dev run                            # start + follow logs, stop on exit (Jean run script)
 ./scripts/dev urls                           # all instances, URLs, ports, and checkouts
-./scripts/dev exec php artisan migrate       # run a command in this branch's Coolify container
+./scripts/dev exec php artisan migrate       # run a command in this branch's Carnauba container
 ./scripts/dev destroy <name>                 # delete containers, volumes, VMs, and the port slot
 ./scripts/dev teardown                       # destroy this worktree's instance (Jean teardown before worktree deletion)
 # Compose: docker-compose.dev-multi.yml  Env + slots: <main checkout>/.dev-instances/ (gitignored)
@@ -29,7 +29,7 @@ Docker Compose-based dev setup with services: coolify (app, which also runs Reve
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
-The main checkout serves its branch at `localhost:8000` (Reverb `6001`, terminal `6002`, db `5432`, redis `6379`, vite `5173`). Worktrees get a port block at `20000 + slot*10` (app `+0`, Reverb `+1`, terminal `+2`, db `+3`, redis `+4`, vite `+5`). Each instance has its own libvirt network `coolify-dev-<slot>` (`10.221.<slot>.0/24`) and VMs `coolify-dev-<branch>--<profile>`; VMs are reused, use `php artisan dev:qemu <profile> --fresh` to rebuild one. On macOS with Lima >= 2.0 (`brew install lima`), the localhost VM is the Lima instance `coolify-dev-<slot>-<profile>` (same profiles, users, and SSH key); Coolify reaches it through Lima's forwarded SSH port on `host.docker.internal`, and only guest ports 80/443 are forwarded to the Mac. Rebuild it with `limactl delete -f <vm>`. Force it with `COOLIFY_DEV_SERVER_BACKEND=lima`. To pass the host NVIDIA GPU through to the KVM localhost VM (`ubuntu-root` only), start with `COOLIFY_DEV_GPU=1 ./scripts/dev start` (or `php artisan dev:qemu ubuntu-root --as-localhost --gpu`). This attaches every PCI function of the GPU, gives the VM 4 GiB, stops `nvidia-persistenced` on the host, and installs the NVIDIA driver and container toolkit in the VM. The host cannot use the GPU while the VM runs. Remove it with `--fresh` without `--gpu`. If `APP_URL` in `.env` is a `*.ts.net` host, the browser ports are published with `tailscale serve`. Set `COOLIFY_DEV_INSTANCE=<name>` to run another instance from the same checkout.
+The main checkout serves its branch at `localhost:8000` (Reverb `6001`, terminal `6002`, db `5432`, redis `6379`, vite `5173`). Worktrees get a port block at `20000 + slot*10` (app `+0`, Reverb `+1`, terminal `+2`, db `+3`, redis `+4`, vite `+5`). Each instance has its own libvirt network `carnauba-dev-<slot>` (`10.221.<slot>.0/24`) and VMs `carnauba-dev-<branch>--<profile>`; VMs are reused, use `php artisan dev:qemu <profile> --fresh` to rebuild one. On macOS with Lima >= 2.0 (`brew install lima`), the localhost VM is the Lima instance `carnauba-dev-<slot>-<profile>` (same profiles, users, and SSH key); Carnauba reaches it through Lima's forwarded SSH port on `host.docker.internal`, and only guest ports 80/443 are forwarded to the Mac. Rebuild it with `limactl delete -f <vm>`. Force it with `CARNAUBA_DEV_SERVER_BACKEND=lima`. To pass the host NVIDIA GPU through to the KVM localhost VM (`ubuntu-root` only), start with `CARNAUBA_DEV_GPU=1 ./scripts/dev start` (or `php artisan dev:qemu ubuntu-root --as-localhost --gpu`). This attaches every PCI function of the GPU, gives the VM 4 GiB, stops `nvidia-persistenced` on the host, and installs the NVIDIA driver and container toolkit in the VM. The host cannot use the GPU while the VM runs. Remove it with `--fresh` without `--gpu`. If `APP_URL` in `.env` is a `*.ts.net` host, the browser ports are published with `tailscale serve`. Set `CARNAUBA_DEV_INSTANCE=<name>` to run another instance from the same checkout.
 
 ## Testing the Self-Hosted Upgrade Process
 
@@ -41,13 +41,13 @@ Use the following workflow to test a self-hosted upgrade:
    bash scripts/upgrade.sh sha-6492d081362c009519481ac70e50873e39ba1861
    ```
 
-2. Set the current Coolify version and rebuild the cached configuration:
+2. Set the current Carnauba version and rebuild the cached configuration:
 
    ```bash
-   docker exec -e COOLIFY_VERSION=4.3.0 coolify php artisan config:cache
+   docker exec -e CARNAUBA_VERSION=4.3.0 carnauba php artisan config:cache
    ```
 
-3. In the Coolify UI, click **Check for Updates**.
+3. In the Carnauba UI, click **Check for Updates**.
 4. Confirm that an upgrade is available, then click **Upgrade** and verify that the upgrade completes successfully.
 
 ## Common Commands
@@ -132,7 +132,7 @@ Because the "server" and the test share one PHP process, they share the phpunit 
 
 - **`Class "Redis" not found` thrown by the HTTP server**: host PHP has no phpredis, and the maintenance-mode store is hard-wired to redis (`config/app.php` → `'maintenance' => ['store' => 'redis']`). Add `config()->set('app.maintenance.store', 'array');` in `beforeEach`.
 - **Every path redirects to onboarding** for a fresh user (`DecideWhatToDoWithUser` + `showBoarding()`). Finish boarding before navigating: `Team::query()->update(['show_boarding' => false]); Cache::flush();` — the `Cache::flush()` is required because `User::currentTeam()` caches the Team for an hour and the in-process server shares that cache.
-- **`->navigate('/path')` races form-submit redirects.** After `->click('Login')`, assert something on the destination page (e.g. `->assertSee('Welcome to Coolify')`) before calling `navigate()`.
+- **`->navigate('/path')` races form-submit redirects.** After `->click('Login')`, assert something on the destination page (e.g. `->assertSee('Welcome to Carnauba')`) before calling `navigate()`.
 - **Failure messages print the *initial* `visit()` URL**, not the current URL. Read the auto-saved screenshot in `tests/Browser/Screenshots/` to see where the browser actually ended up.
 - **Runs hang forever**: stale Playwright servers from a previously killed run. Fix: `pkill -f "playwright run-server"` and rerun. Healthy runs take seconds.
 - **Guest pages miss `DOMPurify`** (`public/js/purify.min.js` loads only `@auth` in `layouts/base.blade.php`), so toast descriptions fail on unauthenticated pages — log in first for toast-related assertions.
@@ -142,7 +142,7 @@ Because the "server" and the test share one PHP process, they share the phpunit 
 ## Architecture
 
 ### Backend Structure (app/)
-- **Actions/** — Domain actions organized by area (Application, Database, Docker, Proxy, Server, Service, Shared, Stripe, User, CoolifyTask, Fortify). Uses `lorisleiva/laravel-actions` with `AsAction` trait — actions can be called as objects, dispatched as jobs, or used as controllers.
+- **Actions/** — Domain actions organized by area (Application, Database, Docker, Proxy, Server, Service, Shared, Stripe, User, CarnaubaTask, Fortify). Uses `lorisleiva/laravel-actions` with `AsAction` trait — actions can be called as objects, dispatched as jobs, or used as controllers.
 - **Livewire/** — All UI components (Livewire 3). Pages organized by domain: Server, Project, Settings, Security, Notifications, Terminal, Subscription, SharedVariables. This is the primary UI layer — no traditional Blade controllers. Components listen to private team channels for real-time status updates via Laravel Reverb.
 - **Jobs/** — Queue jobs for deployments (`ApplicationDeploymentJob`), backups, Docker cleanup, server management, proxy configuration. Uses Redis queue with Horizon for monitoring.
 - **Models/** — Eloquent models extending `BaseModel` which provides auto-CUID2 UUID generation. Key models: `Server`, `Application`, `Service`, `Project`, `Environment`, `Team`, plus standalone database models (`StandalonePostgresql`, `StandaloneMysql`, etc.). Common traits: `HasConfiguration`, `HasMetrics`, `HasSafeStringAttribute`, `ClearsGlobalSearchCache`.
@@ -175,7 +175,7 @@ Because the "server" and the test share one PHP process, they share the phpunit 
 - Apply authorization consistently across Livewire actions, API and web controllers, actions, downloads, exports, search, event listeners, and any other path that exposes or changes protected data.
 - Default to denying access when a policy or ownership relationship is missing or ambiguous. Members must not gain access to administrative, credential, security, billing, or instance-wide data merely because they belong to the team.
 - Add authorization regression tests for protected changes. Cover permitted access, member restrictions where applicable, and cross-team access; verify unauthorized reads and writes return `403` or otherwise reveal no protected data.
-- Do not add a `TRUSTED_PROXIES` setting or change `TrustProxies` to use one. This caused problems in supported Coolify deployments. Fix IP-based rate limits and allow-lists at their call sites instead of changing proxy trust as a shortcut.
+- Do not add a `TRUSTED_PROXIES` setting or change `TrustProxies` to use one. This caused problems in supported Carnauba deployments. Fix IP-based rate limits and allow-lists at their call sites instead of changing proxy trust as a shortcut.
 
 ### Security threat model (read before you report or rate a vulnerability)
 
@@ -183,23 +183,23 @@ Before you rate a vulnerability or write an advisory, find the security boundary
 
 - Trusted by design (attacks that need these roles are low severity):
   - A team admin or owner, and an API token with `write` or `root` ability, already has root on every server of that team (terminal, any Compose file with host mounts, scheduled commands, all team secrets).
-  - An instance admin (admin or owner of the root team) already controls the Coolify instance and its host.
-  - A member with write access on a resource (an access grant) already has root on the server of that resource. In the root team, this includes the Coolify host when the resource runs on localhost.
+  - An instance admin (admin or owner of the root team) already controls the Carnauba instance and its host.
+  - A member with write access on a resource (an access grant) already has root on the server of that resource. In the root team, this includes the Carnauba host when the resource runs on localhost.
   - Repository, Dockerfile, and Compose content that a team admin deploys is trusted for that deployment.
 - Real boundaries:
   - No login -> any access.
   - Team member (read-only) -> write, command execution, or secrets in the own team.
   - Member with access grants -> resources, servers, or credentials outside the grants (use `ServerPolicy::placeResource` for servers and `useTeamCredentials` for team credentials).
   - One team -> another team.
-  - Team user -> the Coolify container or the Coolify host, when the user is not an instance admin.
+  - Team user -> the Carnauba container or the Carnauba host, when the user is not an instance admin.
   - Token -> more than its abilities allow.
-- Rate with the real role that the attack needs, not the role that the reporter claims. Read the policy or gate that protects the path. Admin needed means `PR:H`. Use `S:C` only when the impact reaches another team, the Coolify instance, or a server that the attacker does not manage.
+- Rate with the real role that the attack needs, not the role that the reporter claims. Read the policy or gate that protects the path. Admin needed means `PR:H`. Use `S:C` only when the impact reaches another team, the Carnauba instance, or a server that the attacker does not manage.
 - If a path is reachable by a member only because of a different missing authorization check, report that check as the main issue, with high severity. Rate each injection behind it by the role it needs when the check works.
 - Always fix low-severity findings (escape shell arguments, validate input, confine paths) when you find them. Do not dismiss them because the attacker is an admin.
 - Do not put exploit details, payloads, or unreleased advisory IDs in commits, PR descriptions, code comments, or this file.
 
 ### Event Broadcasting
-- Laravel Reverb WebSocket server for real-time updates (port 6001) and a Node terminal WebSocket server (port 6002), both run inside the `coolify` container as s6 services
+- Laravel Reverb WebSocket server for real-time updates (port 6001) and a Node terminal WebSocket server (port 6002), both run inside the `carnauba` container as s6 services
 - Server-side broadcasts use `PUSHER_BACKEND_HOST`/`PUSHER_BACKEND_PORT` (defaults `127.0.0.1:6001`); `PUSHER_HOST`/`PUSHER_PORT` are browser-facing only
 - Status change events: `ApplicationStatusChanged`, `ServiceStatusChanged`, `DatabaseStatusChanged`, `ProxyStatusChanged`
 - Livewire components subscribe to private team channels via `getListeners()`
@@ -214,7 +214,7 @@ Before you rate a vulnerability or write an advisory, find the security boundary
 
 ### Server transfer (keep it complete)
 
-A server transfer moves a server and every record that belongs to it to another Coolify instance: `ServerTransferExporter` writes the bundle, `ServerTransferImporter` reads it (`app/Services/ServerTransfer/`). `ServerTransferCoverage` records the transfer decision for every model and every column.
+A server transfer moves a server and every record that belongs to it to another Carnauba instance: `ServerTransferExporter` writes the bundle, `ServerTransferImporter` reads it (`app/Services/ServerTransfer/`). `ServerTransferCoverage` records the transfer decision for every model and every column.
 
 - When you add a model, a column, or a relation that belongs to a server or to a resource on a server (application, preview, database, service, volume, environment variable, backup, scheduled task, tag, or setting), decide whether a transfer moves it:
   - **Moved:** export and import it, and add a round-trip assertion to `tests/Unit/ServerTransfer/ServerTransferExporterImporterTest.php`. For a new model, also add it to `ServerTransferCoverage::TRANSFERRED`.
@@ -225,23 +225,23 @@ A server transfer moves a server and every record that belongs to it to another 
 - Application, Service, and the standalone databases export their `$fillable` columns, plus hand-written lists for hidden columns. A column that is not fillable is lost unless you add it to those lists.
 - Do not copy a foreign key as a raw ID. IDs are different on the target. Link the record by UUID, or leave the column out with a reason.
 - Team credentials that a moved record needs (integration tokens, S3 storages, git sources, private keys, cloud provider tokens) move with it.
-- When the user must do a step after the transfer (for example, change a webhook URL at GitHub), add an item type to `TransferFinishChecklist`: the "Finish the transfer" list on the server page of the instance that manages the server now. Give it a check where Coolify can verify the step, and a fix where it can do the step. Also add it to the `post_transfer_checklist` of the bundle (`{target_url}` stands for the URL of the target), which the source shows as text.
+- When the user must do a step after the transfer (for example, change a webhook URL at GitHub), add an item type to `TransferFinishChecklist`: the "Finish the transfer" list on the server page of the instance that manages the server now. Give it a check where Carnauba can verify the step, and a fix where it can do the step. Also add it to the `post_transfer_checklist` of the bundle (`{target_url}` stands for the URL of the target), which the source shows as text.
 - On the source, a transferred server (`Server::isTransferredAway()`) is only an archive, because another instance manages the host. Do not run remote commands, cloud provider calls, or DNS provider calls for it, also not when the archive is deleted.
 
 ### Instance sentinels (`id = 0`)
 
-Coolify seeds **instance-owned** rows at primary key `0`. That value is a sentinel meaning “this is the Coolify instance itself”, not a normal autoincrement id. Do not migrate, resequence, or “fix” these to a positive id.
+Carnauba seeds **instance-owned** rows at primary key `0`. That value is a sentinel meaning “this is the Carnauba instance itself”, not a normal autoincrement id. Do not migrate, resequence, or “fix” these to a positive id.
 
 | Record | Model / lookup | Meaning |
 |---|---|---|
 | Root team | `Team::find(0)`, `team_id === 0` | Instance / root team. Cloud billing and many skip-checks exempt `team_id === 0`. |
-| Localhost server | `Server::find(0)` / `findOrFail(0)` | The machine running Coolify. Upgrades, instance backups, and docker inspect target this server. |
+| Localhost server | `Server::find(0)` / `findOrFail(0)` | The machine running Carnauba. Upgrades, instance backups, and docker inspect target this server. |
 | Instance settings | `InstanceSettings` with `id = 0` | Singleton settings row. Tests must seed `InstanceSettings::create(['id' => 0])` (or `forceCreate`). |
-| Instance Postgres | `StandalonePostgresql` `id = 0`, name `coolify-db` | Coolify’s own database. UI treats `database_id === 0` as the instance DB (e.g. hide delete on backup screens). |
+| Instance Postgres | `StandalonePostgresql` `id = 0`, name `carnauba-db` | Carnauba’s own database. UI treats `database_id === 0` as the instance DB (e.g. hide delete on backup screens). |
 | Local docker dest | `StandaloneDocker` `id = 0` | Destination on the localhost server (`destination_id = 0`). |
 | Root user / default GitHub App | seeders | First-install defaults. |
 
-**Do not assign `id = 0` to new or non-instance rows.** In particular, `ScheduledDatabaseBackup` and `ScheduledTask` are ordinary schedules. Legacy installs may still have a `coolify-db` backup at `id = 0`; resolve that backup via the `coolify-db` relation / uuid, not `ScheduledDatabaseBackup::find(0)`.
+**Do not assign `id = 0` to new or non-instance rows.** In particular, `ScheduledDatabaseBackup` and `ScheduledTask` are ordinary schedules. Legacy installs may still have a `carnauba-db` backup at `id = 0`; resolve that backup via the `carnauba-db` relation / uuid, not `ScheduledDatabaseBackup::find(0)`.
 
 `0` is a PHP/Eloquent landmine (`empty(0)` is true; keyset pagination `where('id', '>', $cursor)` starting at `0` skips the row). Queries that page by id must include `id = 0` on the first page (no lower bound, or cursor `< 0`). Prefer `chunkById()` over a hand-rolled `id > 0` cursor.
 
@@ -298,7 +298,7 @@ The persistent-storage implementation is the reference pattern: `Project\Service
 
 ## Change Files
 
-Each change that users of Coolify can see gets a file in `.changes/`, in the same commit as the change. `scripts/release.sh` writes the files into `CHANGELOG.md`, and the release notes come from there.
+Each change that users of Carnauba can see gets a file in `.changes/`, in the same commit as the change. `scripts/release.sh` writes the files into `CHANGELOG.md`, and the release notes come from there.
 
 Write a file with `scripts/change.sh` and its flags:
 
@@ -310,7 +310,7 @@ scripts/change.sh --notes   # the entries of the next release
 
 - Write one file for each change. When a commit changes something that an unreleased change file describes, edit that file instead of adding a second one.
 - Pass `--commit <commit>` only to describe a commit that exists already.
-- Tests, documentation, refactors, and CI, scripts, or release tooling that users do not see need no file. Use `maintenance` only for a change that matters to people who build or release Coolify.
+- Tests, documentation, refactors, and CI, scripts, or release tooling that users do not see need no file. Use `maintenance` only for a change that matters to people who build or release Carnauba.
 
 | Type | For | Next release |
 | --- | --- | --- |
@@ -334,8 +334,8 @@ The summary reads as one sentence with the heading of its section, never in the 
 | A `--detail` under any section | How it works now, in the present tense | `The default is none` |
 
 - Start with a capital letter or a code span, and end without a period. A reason follows after a comma.
-- Write for the person who runs Coolify. Name the page, setting, or API field that changes, not the class or the file.
-- Link the issues that a change fixes or closes at the end of the summary, for example `([#1234](https://github.com/coollabsio/coolify/issues/1234))`. Do not link pull requests.
+- Write for the person who runs Carnauba. Name the page, setting, or API field that changes, not the class or the file.
+- Link the issues that a change fixes or closes at the end of the summary, for example `([#1234](https://github.com/coollabsio/carnauba/issues/1234))`. Do not link pull requests.
 - Do not use bold. Put each UI name, such as a page, tab, button, setting, or label, in its own code span, for example `Advanced` > `Deployment`.
 - Do not put exploit details, payloads, or unreleased advisory IDs in a change file.
 
@@ -360,7 +360,7 @@ The summary reads as one sentence with the heading of its section, never in the 
 | Pull request image `pr-<number>` | PR from a branch of this repository | Automatic, on each push |
 
 - `upstream.json` pins the helper, Sentinel, and Traefik versions. A change of `upstream.json` releases nothing. `RELEASE.md` tells how to ship it.
-- The helper image is in [coollabsio/coolify-helper](https://github.com/coollabsio/coolify-helper). Change it there, not in this repository.
+- The helper image is in [coollabsio/carnauba-helper](https://github.com/coollabsio/carnauba-helper). Change it there, not in this repository.
 
 <laravel-boost-guidelines>
 === foundation rules ===
