@@ -19,8 +19,12 @@ import {
   Check,
   Search,
   Globe,
-  Radio
+  Radio,
+  LogOut,
+  User,
+  Lock
 } from 'lucide-react';
+import { Login } from './components/Login';
 
 interface ServerData {
   id: string;
@@ -96,7 +100,29 @@ interface DeploymentData {
   duration_seconds: number;
 }
 
+interface UserProfile {
+  email: string;
+  name: string;
+  role: string;
+}
+
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    const savedUser = localStorage.getItem('carnauba_auth_user') || sessionStorage.getItem('carnauba_auth_user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    return localStorage.getItem('carnauba_auth_token') || sessionStorage.getItem('carnauba_auth_token');
+  });
+
   const [currentTab, setCurrentTab] = useState<'overview' | 'applications' | 'databases' | 'servers' | 'deployments' | 'terminal' | 'api'>('overview');
   const [servers, setServers] = useState<ServerData[]>([]);
   const [applications, setApplications] = useState<ApplicationData[]>([]);
@@ -159,11 +185,32 @@ export default function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      if (authToken) {
+        await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('carnauba_auth_token');
+      localStorage.removeItem('carnauba_auth_user');
+      sessionStorage.removeItem('carnauba_auth_token');
+      sessionStorage.removeItem('carnauba_auth_user');
+      setCurrentUser(null);
+      setAuthToken(null);
+    }
+  };
+
   useEffect(() => {
+    if (!currentUser) return;
     fetchData();
     const interval = setInterval(fetchData, 8000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentUser]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -278,7 +325,10 @@ export default function App() {
     try {
       const res = await fetch('/api/v1/servers/srv-localhost/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({ command: cmd }),
       });
 
@@ -302,6 +352,17 @@ export default function App() {
   };
 
   const totalContainers = servers.reduce((acc, s) => acc + s.active_containers, 0);
+
+  if (!currentUser) {
+    return (
+      <Login
+        onLoginSuccess={(user, token) => {
+          setCurrentUser(user);
+          setAuthToken(token);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-[#EDEDED] font-sans overflow-hidden">
@@ -455,8 +516,8 @@ export default function App() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search resources, containers, or IP..."
-                className="bg-[#18181b] border border-white/10 rounded-md pl-9 pr-4 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#6b16ed] w-64"
+                aria-label="Filtrar recursos, contêineres e endereços IP"
+                className="bg-[#18181b] border border-white/10 rounded-md pl-9 pr-4 py-1.5 text-xs text-white focus:outline-none focus:border-[#6b16ed] w-64"
               />
             </div>
             <div className="hidden sm:flex items-center gap-2 text-xs text-zinc-400">
@@ -482,6 +543,28 @@ export default function App() {
               <Plus className="w-3.5 h-3.5" />
               New Application
             </button>
+
+            {/* User Profile & Logout */}
+            <div className="flex items-center gap-2 pl-3 ml-2 border-l border-white/10">
+              <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-[#18181b] border border-white/10">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#6b16ed] to-[#8b45ff] flex items-center justify-center text-[10px] font-bold text-white uppercase shadow-sm">
+                  {currentUser.name ? currentUser.name.charAt(0) : 'A'}
+                </div>
+                <div className="hidden lg:block text-left text-xs">
+                  <div className="font-semibold text-white leading-tight truncate max-w-[120px]">{currentUser.name}</div>
+                  <div className="text-[10px] text-zinc-400 capitalize">{currentUser.role === 'root' ? 'Root Admin' : 'Admin'}</div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleLogout}
+                title="Sign out of Carnauba"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-white hover:bg-red-500/10 hover:border-red-500/20 border border-transparent transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5 text-zinc-400 group-hover:text-red-400" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -1082,7 +1165,7 @@ export default function App() {
                     type="text"
                     value={terminalCmd}
                     onChange={(e) => setTerminalCmd(e.target.value)}
-                    placeholder="Type command (e.g. docker ps, uptime, carnauba status)..."
+                    aria-label="Linha de comando do terminal"
                     className="flex-1 bg-transparent text-white focus:outline-none font-mono text-xs"
                     autoFocus
                   />
@@ -1178,24 +1261,22 @@ export default function App() {
 
             <form onSubmit={handleCreateApplication} className="space-y-3 text-xs">
               <div>
-                <label className="block text-zinc-400 mb-1">Application Name</label>
+                <label className="block text-zinc-400 mb-1">Nome da Aplicação</label>
                 <input
                   type="text"
                   required
                   value={appName}
                   onChange={(e) => setAppName(e.target.value)}
-                  placeholder="e.g. backend-api"
                   className="w-full bg-[#18181b] border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-[#6b16ed]"
                 />
               </div>
 
               <div>
-                <label className="block text-zinc-400 mb-1">Git Repository URL</label>
+                <label className="block text-zinc-400 mb-1">URL do Repositório Git</label>
                 <input
                   type="text"
                   value={appRepo}
                   onChange={(e) => setAppRepo(e.target.value)}
-                  placeholder="https://github.com/Engecema/sample-app.git"
                   className="w-full bg-[#18181b] border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-[#6b16ed]"
                 />
               </div>
@@ -1281,13 +1362,12 @@ export default function App() {
 
             <form onSubmit={handleCreateDatabase} className="space-y-3 text-xs">
               <div>
-                <label className="block text-zinc-400 mb-1">Database Name</label>
+                <label className="block text-zinc-400 mb-1">Nome do Banco de Dados</label>
                 <input
                   type="text"
                   required
                   value={dbName}
                   onChange={(e) => setDbName(e.target.value)}
-                  placeholder="e.g. analytics-db"
                   className="w-full bg-[#18181b] border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-[#6b16ed]"
                 />
               </div>

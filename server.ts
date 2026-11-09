@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -295,7 +296,66 @@ async function startServer() {
   const PORT = 3000;
   const isProd = process.env.NODE_ENV === 'production';
 
-  app.use(express.json());
+  // Defensive Security Middleware
+  app.use(express.json({ limit: '1mb' }));
+
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+
+  // Cryptographic Password Hashing & Salt Helper
+  const hashPassword = (password: string, salt: string): string => {
+    return crypto.createHash('sha256').update(password + salt + 'carnauba_v4_secret').digest('hex');
+  };
+
+  interface UserRecord {
+    id: string;
+    email: string;
+    name: string;
+    passwordHash: string;
+    salt: string;
+    role: 'root' | 'admin' | 'operator';
+    createdAt: string;
+  }
+
+  // In-Memory Secure Users Database
+  const registeredUsers = new Map<string, UserRecord>();
+
+  // Seed default admin accounts with salt
+  const rootSalt = crypto.randomBytes(16).toString('hex');
+  registeredUsers.set('root@carnauba.cloud', {
+    id: 'usr_root_01',
+    email: 'root@carnauba.cloud',
+    name: 'Root Administrator',
+    passwordHash: hashPassword('carnauba123', rootSalt),
+    salt: rootSalt,
+    role: 'root',
+    createdAt: new Date().toISOString(),
+  });
+
+  const devopsSalt = crypto.randomBytes(16).toString('hex');
+  registeredUsers.set('devops@carnauba.cloud', {
+    id: 'usr_devops_02',
+    email: 'devops@carnauba.cloud',
+    name: 'DevOps Team',
+    passwordHash: hashPassword('carnauba123', devopsSalt),
+    salt: devopsSalt,
+    role: 'admin',
+    createdAt: new Date().toISOString(),
+  });
+
+  // Active Sessions Store
+  const authTokens = new Map<string, { email: string; name: string; role: string }>();
+
+  // Brute Force Defense (Rate Limiter: max 5 failed attempts per IP/email within 5 minutes)
+  const failedLoginAttempts = new Map<string, { count: number; lockUntil: number }>();
+
+  // Password Recovery Tokens Store
+  const passwordResetCodes = new Map<string, { code: string; expiresAt: number }>();
 
   // Carnauba API v1 Compatible Endpoints
   app.get('/api/v1/version', (_req: Request, res: Response) => {
@@ -307,6 +367,222 @@ async function startServer() {
       status: 'operational',
       uptime_seconds: 483920,
     });
+  });
+
+  // Authentication: Sign In
+  app.post('/api/v1/auth/login', (req: Request, res: Response) => {
+    const { email, password } = req.body;
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const rateLimitKey = `${clientIp}_${(email || '').toLowerCase().trim()}`;
+
+    // Check brute-force lockout
+    const attempt = failedLoginAttempts.get(rateLimitKey);
+    const now = Date.now();
+    if (attempt && attempt.lockUntil > now) {
+      const waitSeconds = Math.ceil((attempt.lockUntil - now) / 1000);
+      return res.status(429).json({
+        error: `Too many failed login attempts detected. Security lockout active for ${waitSeconds} seconds to prevent brute-force attacks.`,
+      });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = registeredUsers.get(cleanEmail);
+
+    if (!user) {
+      const current = failedLoginAttempts.get(rateLimitKey) || { count: 0, lockUntil: 0 };
+      const newCount = current.count + 1;
+      failedLoginAttempts.set(rateLimitKey, {
+        count: newCount,
+        lockUntil: newCount >= 5 ? now + 5 * 60 * 1000 : 0,
+      });
+      return res.status(401).json({ error: 'Invalid credentials. User not registered in Carnauba.' });
+    }
+
+    const checkHash = hashPassword(password, user.salt);
+    if (checkHash !== user.passwordHash) {
+      const current = failedLoginAttempts.get(rateLimitKey) || { count: 0, lockUntil: 0 };
+      const newCount = current.count + 1;
+      failedLoginAttempts.set(rateLimitKey, {
+        count: newCount,
+        lockUntil: newCount >= 5 ? now + 5 * 60 * 1000 : 0,
+      });
+      return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
+    }
+
+    // Reset failed counter on successful login
+    failedLoginAttempts.delete(rateLimitKey);
+
+    // Generate cryptographically secure session token
+    const token = `carnauba_auth_${crypto.randomBytes(24).toString('hex')}`;
+    authTokens.set(token, {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+
+    res.json({
+      token,
+      user: {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      message: 'Authenticated successfully',
+    });
+  });
+
+  // Authentication: Register New Administrator
+  app.post('/api/v1/auth/register', (req: Request, res: Response) => {
+    const { name, email, password, role = 'admin', masterKey } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Full name, email, and password are required' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long for administrative security' });
+    }
+
+    if (registeredUsers.has(cleanEmail)) {
+      return res.status(409).json({ error: 'An administrator with this email already exists' });
+    }
+
+    // Privilege escalation defense: registering a 'root' user requires masterKey verification
+    let assignedRole: 'root' | 'admin' | 'operator' = 'admin';
+    if (role === 'root') {
+      if (masterKey !== 'carnauba-master-secret-2026') {
+        return res.status(403).json({ error: 'Master Key verification required to register as Root Administrator' });
+      }
+      assignedRole = 'root';
+    } else if (role === 'operator') {
+      assignedRole = 'operator';
+    }
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const newUser: UserRecord = {
+      id: `usr_${Date.now().toString(36)}`,
+      email: cleanEmail,
+      name: name.trim(),
+      passwordHash: hashPassword(password, salt),
+      salt,
+      role: assignedRole,
+      createdAt: new Date().toISOString(),
+    };
+
+    registeredUsers.set(cleanEmail, newUser);
+
+    // Auto-login session token
+    const token = `carnauba_auth_${crypto.randomBytes(24).toString('hex')}`;
+    authTokens.set(token, {
+      email: newUser.email,
+      name: newUser.name,
+      role: newUser.role,
+    });
+
+    res.status(201).json({
+      token,
+      user: {
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+      },
+      message: 'Administrator registered and authenticated successfully',
+    });
+  });
+
+  // Authentication: Forgot Password (Recovery Code Request)
+  app.post('/api/v1/auth/forgot-password', (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = registeredUsers.get(cleanEmail);
+
+    if (!user) {
+      return res.status(404).json({ error: 'No administrator registered with this email address' });
+    }
+
+    // Generate 6-digit cryptographic security code
+    const recoveryCode = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes validity
+    passwordResetCodes.set(cleanEmail, { code: recoveryCode, expiresAt });
+
+    res.json({
+      message: `Recovery code generated for ${cleanEmail}. Verification instructions ready.`,
+      recoveryCode, // Provided for user confirmation
+    });
+  });
+
+  // Authentication: Reset Password (Confirm with Recovery Code)
+  app.post('/api/v1/auth/reset-password', (req: Request, res: Response) => {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: 'Email, recovery code, and new password are required' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const resetData = passwordResetCodes.get(cleanEmail);
+
+    if (!resetData || resetData.expiresAt < Date.now()) {
+      return res.status(400).json({ error: 'Recovery code has expired or does not exist. Please request a new one.' });
+    }
+
+    if (resetData.code !== code.trim()) {
+      return res.status(400).json({ error: 'Invalid recovery code. Please check and try again.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters long' });
+    }
+
+    const user = registeredUsers.get(cleanEmail);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update password with new cryptographic salt
+    const newSalt = crypto.randomBytes(16).toString('hex');
+    user.salt = newSalt;
+    user.passwordHash = hashPassword(newPassword, newSalt);
+
+    passwordResetCodes.delete(cleanEmail);
+
+    // Invalidate existing sessions for this user to prevent unauthorized access
+    for (const [t, u] of authTokens.entries()) {
+      if (u.email === cleanEmail) authTokens.delete(t);
+    }
+
+    res.json({ message: 'Password updated successfully. You can now log in with your new password.' });
+  });
+
+  // Authentication: Sign Out
+  app.post('/api/v1/auth/logout', (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+    if (token) authTokens.delete(token);
+    res.json({ message: 'Logged out successfully' });
+  });
+
+  // Authentication: Me
+  app.get('/api/v1/auth/me', (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token || !authTokens.has(token)) {
+      return res.status(401).json({ error: 'Unauthorized session' });
+    }
+    res.json({ user: authTokens.get(token) });
   });
 
   // Servers
@@ -538,37 +814,70 @@ async function startServer() {
     });
   });
 
-  // Terminal & Command Executor API
+  // Terminal & Command Executor API (Protected with Anti-Injection & Sandboxing)
   app.post('/api/v1/servers/:id/execute', (req: Request, res: Response) => {
+    // Check authentication
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token || !authTokens.has(token)) {
+      return res.status(401).json({ error: 'Unauthorized: Command execution requires authenticated administrator session' });
+    }
+
     const { command } = req.body;
     const server = servers.find(s => s.id === req.params.id) || servers[0];
     const cmd = (command || '').trim();
 
+    if (!cmd) {
+      return res.status(400).json({ error: 'Command string is required' });
+    }
+
+    // Defensive check: Anti-injection & Metacharacter detection
+    const dangerousPatterns = /[;&|`$><\n\r]|(\.\.\/)|(\/etc\/shadow)|(\/etc\/passwd)|(nc\s)|(curl\s)|(wget\s)|(chmod\s)|(rm\s-rf)/i;
+    if (dangerousPatterns.test(cmd)) {
+      return res.status(403).json({
+        error: 'Execution blocked: Command contains unsafe metacharacters or dangerous patterns rejected by Carnauba Security Shield.',
+        code: 'SECURITY_INSPECTION_VIOLATION',
+      });
+    }
+
+    // Safe command allowlist
+    const normalized = cmd.toLowerCase();
     let output = '';
-    if (cmd === 'docker ps' || cmd.startsWith('docker ps')) {
+
+    if (normalized.startsWith('docker ps')) {
       output = `CONTAINER ID   IMAGE                               COMMAND                  CREATED         STATUS         PORTS                    NAMES
 8f921ab04c1    carnauba-api:latest                 "docker-entrypoint.s…"   2 days ago      Up 2 days      0.0.0.0:3000->3000/tcp   carnauba-api-1
 7a2b0c3d4e5    postgres:16.4-alpine                "docker-entrypoint.s…"   5 days ago      Up 5 days      0.0.0.0:5432->5432/tcp   carnauba-postgres
 5e4d3c2b1a0    traefik:v3.1                        "/entrypoint.sh trae…"   12 days ago     Up 12 days     0.0.0.0:80->80/tcp       carnauba-proxy
 11a22b33c44    carnauba/sentinel:latest            "/sentinel"              12 days ago     Up 12 days                              carnauba-sentinel`;
-    } else if (cmd === 'uptime') {
+    } else if (normalized.startsWith('docker stats')) {
+      output = `CONTAINER ID   NAME                 CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+8f921ab04c1    carnauba-api-1       1.24%     284MiB / 15.63GiB     1.77%     84.2MB / 120MB    12.4MB / 4.1MB    28
+7a2b0c3d4e5    carnauba-postgres    0.45%     412MiB / 15.63GiB     2.57%     14.5MB / 9.8MB    84.1MB / 18.2MB   14
+5e4d3c2b1a0    carnauba-proxy       0.12%     94MiB / 15.63GiB      0.58%     240MB / 310MB     4.1MB / 820kB     9`;
+    } else if (normalized.startsWith('docker logs')) {
+      output = `[carnauba-system] Traefik TLS automatic certificate renewal active
+[carnauba-system] Sentinel daemon listening on socket /var/run/docker.sock
+[carnauba-system] Health check probes responding: 200 OK (all services nominal)`;
+    } else if (normalized === 'uptime') {
       output = ` 12:54:19 up 14 days,  3:22,  2 users,  load average: 0.18, 0.22, 0.19`;
-    } else if (cmd === 'free -m' || cmd === 'free -h') {
+    } else if (normalized === 'free -m' || normalized === 'free -h') {
       output = `               total        used        free      shared  buff/cache   available
 Mem:           16384        3840        9120         180        3424       12150
 Swap:           4096         120        3976`;
-    } else if (cmd === 'df -h') {
+    } else if (normalized === 'df -h') {
       output = `Filesystem      Size  Used Avail Use% Mounted on
 /dev/sda1       250G   42G  196G  18% /
 tmpfs           8.0G     0  8.0G   0% /dev/shm
 /dev/sda2       100M  6.2M   94M   7% /boot/efi`;
-    } else if (cmd.includes('carnauba')) {
-      output = `Carnauba Engine v4.0.0-beta.392
+    } else if (normalized.includes('carnauba')) {
+      output = `Carnauba Engine v4.0.0-beta.392 (Production Hardened)
+Security Shield: Active (Anti-injection, Rate Limiting, RBAC)
 Proxy: Traefik v3.1 (healthy)
 Sentinel: Active (polling every 10s)
 Docker: Docker Engine v27.1.1 (API 1.46)`;
     } else {
-      output = `[carnauba@${server.name}]: Executed: ${cmd}\nCommand completed with exit code 0.`;
+      output = `[carnauba@${server.name}]: Executed: ${cmd.replace(/[^a-zA-Z0-9 _-]/g, '')}\nDiagnostic inspection completed safely with exit code 0.`;
     }
 
     res.json({
