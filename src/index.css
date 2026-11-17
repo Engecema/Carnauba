@@ -2,8 +2,8 @@
 
 @layer base {
   :root {
-    --ui-font-sans: 'Geist', system-ui, sans-serif;
-    --ui-font-mono: 'Geist Mono', monospace;
+    --ui-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+    --ui-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
     --ui-canvas: #0a0a0a;
     --ui-sidebar: #120e1a;
@@ -18,5 +18,9 @@
     font-family: var(--ui-font-sans);
     background-color: #0a0a0a;
     color: #ededed;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--ui-font-mono);
   }
 }
