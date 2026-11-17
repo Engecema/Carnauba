@@ -83,9 +83,11 @@ async function startServer() {
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    const scriptSrc = isProd ? "script-src 'self'" : "script-src 'self' 'unsafe-inline'";
+    const connectSrc = isProd ? "connect-src 'self'" : "connect-src 'self' ws: wss:";
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self';"
+      `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; ${connectSrc}; object-src 'none'; base-uri 'self';`
     );
     next();
   });
